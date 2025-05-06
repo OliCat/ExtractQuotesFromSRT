@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Extracteur de Citations pour Podcasts{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Extraire des citations de votre podcast</h4>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Fichier SRT de sous-titres</label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".srt" required>
+                        <div class="form-text">Téléchargez un fichier SRT généré par YouTube ou un autre service.</div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="num_quotes" class="form-label">Nombre de citations à extraire</label>
+                            <input type="number" class="form-control" id="num_quotes" name="num_quotes" value="10" min="1" max="50">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="min_length" class="form-label">Longueur minimale (caractères)</label>
+                            <input type="number" class="form-control" id="min_length" name="min_length" value="500" min="100" max="2000">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="keywords" class="form-label">Mots-clés (séparés par des virgules)</label>
+                        <input type="text" class="form-control" id="keywords" name="keywords" placeholder="important, conclusion, résumé">
+                        <div class="form-text">Laissez vide si vous ne souhaitez pas utiliser de mots-clés spécifiques.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Options d'analyse</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="sentiment" name="sentiment" checked>
+                            <label class="form-check-label" for="sentiment">
+                                Utiliser l'analyse de sentiment
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="topic_detection" name="topic_detection" checked>
+                            <label class="form-check-label" for="topic_detection">
+                                Détecter les changements de sujet
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="group_subtitles" name="group_subtitles" checked>
+                            <label class="form-check-label" for="group_subtitles">
+                                <strong>Regrouper les sous-titres en passages cohérents</strong>
+                            </label>
+                            <div class="form-text">Crée des extraits plus longs et plus cohérents en regroupant les sous-titres consécutifs.</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3" id="max_gap_section">
+                        <label for="max_gap" class="form-label">Écart maximal entre sous-titres (secondes)</label>
+                        <input type="number" class="form-control" id="max_gap" name="max_gap" value="3.0" min="0.5" max="10" step="0.5">
+                        <div class="form-text">Écart maximal en secondes entre deux sous-titres pour les considérer comme faisant partie du même passage.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Options d'exportation</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="ffmpeg" name="ffmpeg" checked>
+                            <label class="form-check-label" for="ffmpeg">
+                                Générer un script de découpage FFmpeg
+                            </label>
+                        </div>
+                        <div class="form-check ms-4" id="add_subtitles_section">
+                            <input class="form-check-input" type="checkbox" id="add_subtitles" name="add_subtitles" checked>
+                            <label class="form-check-label" for="add_subtitles">
+                                Incruster les sous-titres dans les segments vidéo
+                            </label>
+                            <div class="form-text">Le script FFmpeg incrustera automatiquement les sous-titres dans les segments vidéo extraits.</div>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="json" name="json" checked>
+                            <label class="form-check-label" for="json">
+                                Exporter au format JSON
+                            </label>
+                            <div class="form-text">Permet l'édition ultérieure des citations.</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3" id="padding_section">
+                        <label for="padding" class="form-label">Padding en secondes pour les segments vidéo</label>
+                        <input type="number" class="form-control" id="padding" name="padding" value="1" min="0" max="10">
+                        <div class="form-text">Ajoute des secondes avant et après chaque segment extrait.</div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Extraire les citations</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <h5>Comment ça marche ?</h5>
+            <ol>
+                <li>Téléchargez les sous-titres SRT depuis YouTube ou un autre service</li>
+                <li>Configurez les options d'extraction selon vos besoins</li>
+                <li>Cliquez sur "Extraire les citations" pour analyser le contenu</li>
+                <li>Consultez les résultats et téléchargez les fichiers générés</li>
+                <li>Utilisez le script FFmpeg pour découper automatiquement votre vidéo</li>
+                <li><strong>Nouveau :</strong> Éditez les citations pour améliorer leur qualité avant l'exportation finale</li>
+            </ol>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ffmpegCheckbox = document.getElementById('ffmpeg');
+        const paddingSection = document.getElementById('padding_section');
+        const groupSubtitlesCheckbox = document.getElementById('group_subtitles');
+        const maxGapSection = document.getElementById('max_gap_section');
+        const addSubtitlesSection = document.getElementById('add_subtitles_section');
+        
+        function updatePaddingVisibility() {
+            paddingSection.style.display = ffmpegCheckbox.checked ? 'block' : 'none';
+        }
+        
+        function updateMaxGapVisibility() {
+            maxGapSection.style.display = groupSubtitlesCheckbox.checked ? 'block' : 'none';
+        }
+        
+        function updateAddSubtitlesVisibility() {
+            addSubtitlesSection.style.display = ffmpegCheckbox.checked ? 'block' : 'none';
+        }
+        
+        ffmpegCheckbox.addEventListener('change', updatePaddingVisibility);
+        ffmpegCheckbox.addEventListener('change', updateAddSubtitlesVisibility);
+        groupSubtitlesCheckbox.addEventListener('change', updateMaxGapVisibility);
+        
+        updatePaddingVisibility();
+        updateMaxGapVisibility();
+        updateAddSubtitlesVisibility();
+    });
+</script>
+{% endblock %} 

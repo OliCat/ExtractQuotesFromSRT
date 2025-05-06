@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Édition des Citations{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-10 offset-md-1">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Édition des Citations</h2>
+            <div>
+                <button id="save-button" class="btn btn-success me-2">Sauvegarder</button>
+                <a href="{{ url_for('results', filename=filename) }}" class="btn btn-outline-primary">Retour aux résultats</a>
+            </div>
+        </div>
+
+        <div class="alert alert-info">
+            <p><strong>Instructions :</strong> Vous pouvez éditer le contenu de chaque citation pour améliorer sa qualité. Les modifications seront enregistrées et les fichiers générés (texte, JSON, FFmpeg) seront mis à jour en conséquence.</p>
+        </div>
+
+        <div id="alerts-container"></div>
+
+        <div id="quotes-container">
+            {% for quote in quotes %}
+            <div class="card mb-4 quote-card" data-index="{{ loop.index0 }}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Citation #{{ loop.index }}</h5>
+                    <span class="badge bg-primary">{{ quote.formatted_start }} - {{ quote.formatted_end }}</span>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="quote-content-{{ loop.index0 }}" class="form-label">Contenu</label>
+                        <textarea class="form-control quote-content" id="quote-content-{{ loop.index0 }}" rows="5" data-index="{{ loop.index0 }}">{{ quote.content }}</textarea>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <span class="text-muted">Durée: {{ quote.duration_seconds|int }} secondes</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="d-flex justify-content-between mt-4">
+            <button id="generate-srt" class="btn btn-info">Générer un fichier SRT des citations éditées</button>
+            <button id="save-button-bottom" class="btn btn-success">Sauvegarder toutes les modifications</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Stockage des données de citation originales
+        let quotesData = {{ quotes|tojson }};
+        
+        // Fonction pour afficher une alerte
+        function showAlert(message, type = 'success') {
+            const alertsContainer = document.getElementById('alerts-container');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            alertsContainer.appendChild(alertDiv);
+            
+            // Faire disparaître l'alerte après 5 secondes
+            setTimeout(() => {
+                alertDiv.classList.remove('show');
+                setTimeout(() => alertDiv.remove(), 150);
+            }, 5000);
+        }
+        
+        // Fonction pour mettre à jour les données des citations
+        function updateQuotesData() {
+            document.querySelectorAll('.quote-content').forEach(textarea => {
+                const index = parseInt(textarea.dataset.index);
+                quotesData[index].content = textarea.value;
+            });
+        }
+        
+        // Fonction pour sauvegarder les modifications
+        function saveChanges() {
+            updateQuotesData();
+            
+            fetch('/save_edits/{{ filename }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(quotesData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert(data.message, 'success');
+                } else {
+                    showAlert(data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                showAlert('Erreur lors de la sauvegarde: ' + error, 'danger');
+            });
+        }
+        
+        // Gestionnaires d'événements pour les boutons de sauvegarde
+        document.getElementById('save-button').addEventListener('click', saveChanges);
+        document.getElementById('save-button-bottom').addEventListener('click', saveChanges);
+        
+        // Gestionnaire d'événement pour le bouton de génération de SRT
+        document.getElementById('generate-srt').addEventListener('click', function() {
+            saveChanges();
+            setTimeout(() => {
+                window.location.href = '/download/srt/{{ filename }}';
+            }, 1000);
+        });
+    });
+</script>
+{% endblock %} 
