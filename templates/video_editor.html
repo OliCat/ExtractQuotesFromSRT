@@ -1,0 +1,622 @@
+{% extends "base.html" %}
+
+{% block title %}Éditeur Vidéo{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Élément caché pour stocker les données JSON encodées en base64 -->
+    <div id="quotes-data" data-quotes="{{ quotes_base64 }}" style="display: none;"></div>
+    <div id="subtitle-options-data" data-options="{{ options_base64 }}" style="display: none;"></div>
+    
+    <div class="col-md-10 offset-md-1">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Éditeur Vidéo</h2>
+            <div>
+                <button id="save-button" class="btn btn-success me-2">Sauvegarder</button>
+                <a href="{{ url_for('results', filename=filename) }}" class="btn btn-outline-primary">Retour aux résultats</a>
+            </div>
+        </div>
+
+        <div class="alert alert-info">
+            <p><strong>Instructions :</strong> Téléchargez votre fichier vidéo pour prévisualiser les extraits. Vous pouvez ajuster précisément les points de début et de fin de chaque extrait.</p>
+        </div>
+
+        <div id="alerts-container"></div>
+
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">Lecteur Vidéo</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="video-container" class="position-relative">
+                            <video id="video-player" class="w-100" controls>
+                                <source id="video-source" src="" type="video/mp4">
+                                Votre navigateur ne prend pas en charge la lecture vidéo.
+                            </video>
+                            <div id="video-overlay" class="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-dark bg-opacity-75 text-white">
+                                <div class="text-center">
+                                    <h4>Téléchargez votre fichier vidéo</h4>
+                                    <p class="text-muted">Taille maximale: 2 GB</p>
+                                    <input type="file" id="video-file-input" class="d-none" accept="video/*">
+                                    <button id="upload-video-btn" class="btn btn-primary mt-3">Sélectionner un fichier</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between">
+                            <button id="prev-quote-btn" class="btn btn-outline-secondary" disabled>Extrait précédent</button>
+                            <span id="current-quote-info" class="align-self-center">Aucun extrait sélectionné</span>
+                            <button id="next-quote-btn" class="btn btn-outline-secondary" disabled>Extrait suivant</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Édition de l'extrait</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="quote-start-time" class="form-label">Début (secondes)</label>
+                            <input type="number" class="form-control" id="quote-start-time" step="0.1" min="0" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label for="quote-end-time" class="form-label">Fin (secondes)</label>
+                            <input type="number" class="form-control" id="quote-end-time" step="0.1" min="0" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label for="quote-content" class="form-label">Contenu</label>
+                            <textarea class="form-control" id="quote-content" rows="5" disabled></textarea>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button id="set-start-btn" class="btn btn-outline-primary" disabled>Définir comme début</button>
+                            <button id="set-end-btn" class="btn btn-outline-primary" disabled>Définir comme fin</button>
+                            <button id="preview-btn" class="btn btn-outline-info" disabled>Prévisualiser l'extrait</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Options de sous-titres</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="subtitle-font" class="form-label">Police</label>
+                            <select class="form-select" id="subtitle-font">
+                                <option value="Arial">Arial</option>
+                                <option value="Helvetica">Helvetica</option>
+                                <option value="Verdana">Verdana</option>
+                                <option value="Times New Roman">Times New Roman</option>
+                                <option value="Courier New">Courier New</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="subtitle-size" class="form-label">Taille</label>
+                            <input type="number" class="form-control" id="subtitle-size" value="36" min="12" max="72">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="subtitle-color" class="form-label">Couleur</label>
+                            <input type="color" class="form-control form-control-color" id="subtitle-color" value="#ffffff">
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="subtitle-background" class="form-label">Couleur de fond</label>
+                            <input type="color" class="form-control form-control-color" id="subtitle-background" value="#000000">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="subtitle-opacity" class="form-label">Opacité du fond</label>
+                            <input type="range" class="form-range" id="subtitle-opacity" min="0" max="1" step="0.1" value="0.7">
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="mb-3">
+                            <label for="subtitle-max-segment" class="form-label">Longueur maximale des segments (caractères)</label>
+                            <input type="number" class="form-control" id="subtitle-max-segment" value="150" min="50" max="300">
+                            <small class="text-muted">Une valeur plus élevée affichera plus de texte à la fois, une valeur plus basse créera plus de segments.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">Combiner des extraits</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Extraits disponibles</label>
+                    <div id="quotes-list" class="list-group mb-3">
+                        <!-- Les extraits seront ajoutés ici dynamiquement -->
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Extraits sélectionnés pour la combinaison</label>
+                    <div id="selected-quotes" class="list-group mb-3">
+                        <!-- Les extraits sélectionnés seront ajoutés ici -->
+                    </div>
+                </div>
+                <div class="d-grid">
+                    <button id="combine-btn" class="btn btn-warning" disabled>Combiner les extraits sélectionnés</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between mt-4">
+            <button id="generate-all-btn" class="btn btn-info">Générer tous les extraits</button>
+            <button id="save-button-bottom" class="btn btn-success">Sauvegarder toutes les modifications</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Fonction pour décoder base64
+    function decodeBase64(str) {
+        // Fonction pour décoder une chaîne base64 en UTF-8
+        return decodeURIComponent(Array.prototype.map.call(atob(str), function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Récupérer les données depuis les éléments HTML
+        let quotesData;
+        let subtitleOptions;
+        
+        try {
+            const quotesElement = document.getElementById('quotes-data');
+            const optionsElement = document.getElementById('subtitle-options-data');
+            
+            // Décoder les données base64
+            const quotesJson = decodeBase64(quotesElement.dataset.quotes);
+            const optionsJson = decodeBase64(optionsElement.dataset.options);
+            
+            quotesData = JSON.parse(quotesJson);
+            subtitleOptions = JSON.parse(optionsJson);
+            
+            console.log("Données chargées avec succès");
+        } catch (error) {
+            console.error("Erreur lors du parsing des données:", error);
+            quotesData = [];
+            subtitleOptions = {
+                font: "Arial",
+                size: "36",
+                color: "0xffffff",
+                backgroundColor: "0x000000",
+                opacity: "0.7",
+                maxSegmentLength: "150"
+            };
+        }
+        
+        // Initialiser les champs de formulaire avec les options de sous-titres
+        try {
+            // Convertir les couleurs de 0xRRGGBB à #RRGGBB
+            const fontColor = subtitleOptions.color.replace('0x', '#');
+            const bgColor = subtitleOptions.backgroundColor.replace('0x', '#');
+            
+            document.getElementById('subtitle-font').value = subtitleOptions.font || "Arial";
+            document.getElementById('subtitle-size').value = subtitleOptions.size || "36";
+            document.getElementById('subtitle-color').value = fontColor;
+            document.getElementById('subtitle-background').value = bgColor;
+            document.getElementById('subtitle-opacity').value = subtitleOptions.opacity || "0.7";
+            document.getElementById('subtitle-max-segment').value = subtitleOptions.maxSegmentLength || "150";
+        } catch (error) {
+            console.error("Erreur lors de l'initialisation des options de sous-titres:", error);
+        }
+        
+        let currentQuoteIndex = -1;
+        let videoFile = null;
+        
+        const videoPlayer = document.getElementById('video-player');
+        const videoOverlay = document.getElementById('video-overlay');
+        const uploadBtn = document.getElementById('upload-video-btn');
+        const fileInput = document.getElementById('video-file-input');
+        
+        // Éléments d'interface pour l'édition
+        const startTimeInput = document.getElementById('quote-start-time');
+        const endTimeInput = document.getElementById('quote-end-time');
+        const contentTextarea = document.getElementById('quote-content');
+        const setStartBtn = document.getElementById('set-start-btn');
+        const setEndBtn = document.getElementById('set-end-btn');
+        const previewBtn = document.getElementById('preview-btn');
+        const prevQuoteBtn = document.getElementById('prev-quote-btn');
+        const nextQuoteBtn = document.getElementById('next-quote-btn');
+        const currentQuoteInfo = document.getElementById('current-quote-info');
+        
+        // Fonction pour afficher une alerte
+        function showAlert(message, type) {
+            if (!type) type = 'success';
+            const alertsContainer = document.getElementById('alerts-container');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            alertsContainer.appendChild(alertDiv);
+            
+            // Faire disparaître l'alerte après 5 secondes
+            setTimeout(function() {
+                alertDiv.classList.remove('show');
+                setTimeout(function() {
+                    alertDiv.remove();
+                }, 150);
+            }, 5000);
+        }
+        
+        // Gestionnaire pour le téléchargement de vidéo
+        uploadBtn.addEventListener('click', function() {
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                videoFile = e.target.files[0];
+                
+                // Vérifier la taille du fichier (2GB max)
+                const maxSize = 2 * 1024 * 1024 * 1024; // 2GB en octets
+                if (videoFile.size > maxSize) {
+                    showAlert('Erreur: Le fichier est trop volumineux. La taille maximale est de 2 GB.', 'danger');
+                    return;
+                }
+                
+                // Créer un FormData pour l'upload
+                const formData = new FormData();
+                formData.append('video', videoFile);
+                
+                // Afficher un message de chargement
+                showAlert('Téléchargement de la vidéo en cours... Veuillez patienter, cela peut prendre quelques minutes pour les fichiers volumineux.', 'info');
+                
+                // Envoyer la vidéo au serveur
+                fetch('/upload_video/{{ filename }}', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        if (response.status === 413) {
+                            throw new Error('Le fichier est trop volumineux. Veuillez utiliser un fichier plus petit ou augmenter la limite de taille dans la configuration du serveur.');
+                        }
+                        throw new Error('Erreur lors du téléchargement');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Mettre à jour la source vidéo
+                        videoPlayer.src = data.video_url;
+                        videoOverlay.style.display = 'none';
+                        
+                        // Activer les contrôles d'édition
+                        setStartBtn.disabled = false;
+                        setEndBtn.disabled = false;
+                        previewBtn.disabled = false;
+                        
+                        // Charger le premier extrait
+                        if (quotesData.length > 0) {
+                            loadQuote(0);
+                            populateQuotesList();
+                        }
+                        
+                        showAlert('Vidéo téléchargée avec succès', 'success');
+                    } else {
+                        showAlert('Erreur: ' + data.message, 'danger');
+                    }
+                })
+                .catch(error => {
+                    showAlert('Erreur lors du téléchargement: ' + error.message, 'danger');
+                });
+            }
+        });
+        
+        // Fonction pour charger un extrait
+        function loadQuote(index) {
+            if (index >= 0 && index < quotesData.length) {
+                currentQuoteIndex = index;
+                const quote = quotesData[index];
+                
+                startTimeInput.value = quote.start_time_seconds;
+                endTimeInput.value = quote.end_time_seconds;
+                contentTextarea.value = quote.content;
+                
+                // Activer les boutons de navigation
+                prevQuoteBtn.disabled = index === 0;
+                nextQuoteBtn.disabled = index === quotesData.length - 1;
+                
+                // Mettre à jour l'info de l'extrait courant
+                currentQuoteInfo.textContent = `Extrait ${index + 1}/${quotesData.length}`;
+                
+                // Activer les contrôles d'édition
+                startTimeInput.disabled = false;
+                endTimeInput.disabled = false;
+                contentTextarea.disabled = false;
+            }
+        }
+        
+        // Fonction pour prévisualiser l'extrait
+        previewBtn.addEventListener('click', function() {
+            if (currentQuoteIndex >= 0) {
+                const startTime = parseFloat(startTimeInput.value);
+                videoPlayer.currentTime = startTime;
+                videoPlayer.play();
+                
+                const endTime = parseFloat(endTimeInput.value);
+                const duration = endTime - startTime;
+                
+                setTimeout(function() {
+                    videoPlayer.pause();
+                }, duration * 1000);
+            }
+        });
+        
+        // Définir le point de début au temps actuel de la vidéo
+        setStartBtn.addEventListener('click', function() {
+            startTimeInput.value = videoPlayer.currentTime.toFixed(1);
+            updateCurrentQuote();
+        });
+        
+        // Définir le point de fin au temps actuel de la vidéo
+        setEndBtn.addEventListener('click', function() {
+            endTimeInput.value = videoPlayer.currentTime.toFixed(1);
+            updateCurrentQuote();
+        });
+        
+        // Mettre à jour les données de l'extrait courant
+        function updateCurrentQuote() {
+            if (currentQuoteIndex >= 0) {
+                const startTime = parseFloat(startTimeInput.value);
+                const endTime = parseFloat(endTimeInput.value);
+                const content = contentTextarea.value;
+                
+                quotesData[currentQuoteIndex].start_time_seconds = startTime;
+                quotesData[currentQuoteIndex].end_time_seconds = endTime;
+                quotesData[currentQuoteIndex].content = content;
+                
+                // Mettre à jour les formats de timecode
+                const startTimecode = formatTimecode(startTime);
+                const endTimecode = formatTimecode(endTime);
+                
+                quotesData[currentQuoteIndex].formatted_start = startTimecode;
+                quotesData[currentQuoteIndex].formatted_end = endTimecode;
+                quotesData[currentQuoteIndex].duration_seconds = endTime - startTime;
+                
+                // Mettre à jour l'affichage dans la liste des extraits
+                updateQuoteInList(currentQuoteIndex);
+            }
+        }
+        
+        // Formater un temps en secondes en timecode HH:MM:SS
+        function formatTimecode(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        // Navigation entre les extraits
+        prevQuoteBtn.addEventListener('click', function() {
+            if (currentQuoteIndex > 0) {
+                loadQuote(currentQuoteIndex - 1);
+            }
+        });
+        
+        nextQuoteBtn.addEventListener('click', function() {
+            if (currentQuoteIndex < quotesData.length - 1) {
+                loadQuote(currentQuoteIndex + 1);
+            }
+        });
+        
+        // Fonction pour peupler la liste des extraits
+        function populateQuotesList() {
+            const quotesList = document.getElementById('quotes-list');
+            quotesList.innerHTML = '';
+            
+            quotesData.forEach(function(quote, index) {
+                const quoteItem = document.createElement('div');
+                quoteItem.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+                quoteItem.dataset.index = index;
+                
+                quoteItem.innerHTML = `
+                    <div class="me-auto">
+                        <div class="fw-bold">Extrait ${index + 1}</div>
+                        <small>${quote.formatted_start} - ${quote.formatted_end} (${Math.round(quote.duration_seconds)}s)</small>
+                    </div>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button class="btn btn-outline-primary edit-quote-btn">Éditer</button>
+                        <button class="btn btn-outline-success add-to-selection-btn">Ajouter</button>
+                    </div>
+                `;
+                
+                quotesList.appendChild(quoteItem);
+                
+                // Ajouter les gestionnaires d'événements
+                quoteItem.querySelector('.edit-quote-btn').addEventListener('click', function() {
+                    loadQuote(index);
+                });
+                
+                quoteItem.querySelector('.add-to-selection-btn').addEventListener('click', function() {
+                    addToSelectedQuotes(index);
+                });
+            });
+            
+            // Activer le bouton de combinaison
+            document.getElementById('combine-btn').disabled = false;
+        }
+        
+        // Fonction pour mettre à jour un extrait dans la liste
+        function updateQuoteInList(index) {
+            const quotesList = document.getElementById('quotes-list');
+            const quoteItems = quotesList.querySelectorAll('.list-group-item');
+            
+            if (quoteItems[index]) {
+                const quote = quotesData[index];
+                const small = quoteItems[index].querySelector('small');
+                small.textContent = `${quote.formatted_start} - ${quote.formatted_end} (${Math.round(quote.duration_seconds)}s)`;
+            }
+        }
+        
+        // Fonction pour ajouter un extrait à la sélection
+        function addToSelectedQuotes(index) {
+            const selectedQuotes = document.getElementById('selected-quotes');
+            const quote = quotesData[index];
+            
+            // Vérifier si l'extrait est déjà dans la sélection
+            if (selectedQuotes.querySelector(`[data-index="${index}"]`)) {
+                showAlert('Cet extrait est déjà dans la sélection', 'warning');
+                return;
+            }
+            
+            const quoteItem = document.createElement('div');
+            quoteItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+            quoteItem.dataset.index = index;
+            
+            quoteItem.innerHTML = `
+                <div class="me-auto">
+                    <div class="fw-bold">Extrait ${index + 1}</div>
+                    <small>${quote.formatted_start} - ${quote.formatted_end} (${Math.round(quote.duration_seconds)}s)</small>
+                </div>
+                <button class="btn btn-sm btn-outline-danger remove-from-selection-btn">Retirer</button>
+            `;
+            
+            selectedQuotes.appendChild(quoteItem);
+            
+            // Ajouter le gestionnaire d'événement pour retirer
+            quoteItem.querySelector('.remove-from-selection-btn').addEventListener('click', function() {
+                quoteItem.remove();
+            });
+        }
+        
+        // Fonction pour sauvegarder les modifications
+        function saveChanges() {
+            // Mettre à jour l'extrait courant avant de sauvegarder
+            if (currentQuoteIndex >= 0) {
+                updateCurrentQuote();
+            }
+            
+            // Récupérer les options de sous-titres
+            const subtitleOptions = {
+                font: document.getElementById('subtitle-font').value,
+                size: document.getElementById('subtitle-size').value,
+                color: document.getElementById('subtitle-color').value.replace('#', '0x'),
+                backgroundColor: document.getElementById('subtitle-background').value.replace('#', '0x'),
+                opacity: document.getElementById('subtitle-opacity').value,
+                maxSegmentLength: document.getElementById('subtitle-max-segment').value
+            };
+            
+            // Préparer les données à envoyer
+            const dataToSend = {
+                quotes: quotesData,
+                subtitleOptions: subtitleOptions
+            };
+            
+            fetch('/save_video_edits/{{ filename }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(dataToSend)
+            })
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(data) {
+                if (data.success) {
+                    showAlert(data.message, 'success');
+                } else {
+                    showAlert(data.message, 'danger');
+                }
+            })
+            .catch(function(error) {
+                showAlert('Erreur lors de la sauvegarde: ' + error, 'danger');
+            });
+        }
+        
+        // Fonction pour combiner les extraits sélectionnés
+        document.getElementById('combine-btn').addEventListener('click', function() {
+            const selectedQuotes = document.getElementById('selected-quotes');
+            const selectedItems = selectedQuotes.querySelectorAll('.list-group-item');
+            
+            if (selectedItems.length < 2) {
+                showAlert('Sélectionnez au moins deux extraits à combiner', 'warning');
+                return;
+            }
+            
+            // Récupérer les indices des extraits sélectionnés
+            const selectedIndices = Array.from(selectedItems).map(function(item) {
+                return parseInt(item.dataset.index);
+            });
+            
+            // Trier les indices pour les traiter dans l'ordre chronologique
+            selectedIndices.sort(function(a, b) {
+                return quotesData[a].start_time_seconds - quotesData[b].start_time_seconds;
+            });
+            
+            // Créer un nouvel extrait combiné
+            const combinedQuote = {
+                content: selectedIndices.map(function(i) {
+                    return quotesData[i].content;
+                }).join(' '),
+                start_time_seconds: quotesData[selectedIndices[0]].start_time_seconds,
+                end_time_seconds: quotesData[selectedIndices[selectedIndices.length - 1]].end_time_seconds,
+                formatted_start: quotesData[selectedIndices[0]].formatted_start,
+                formatted_end: quotesData[selectedIndices[selectedIndices.length - 1]].formatted_end,
+                duration_seconds: quotesData[selectedIndices[selectedIndices.length - 1]].end_time_seconds - quotesData[selectedIndices[0]].start_time_seconds
+            };
+            
+            // Ajouter le nouvel extrait combiné
+            quotesData.push(combinedQuote);
+            
+            // Mettre à jour l'interface
+            populateQuotesList();
+            loadQuote(quotesData.length - 1);
+            
+            // Vider la sélection
+            selectedQuotes.innerHTML = '';
+            
+            showAlert('Extraits combinés avec succès', 'success');
+        });
+        
+        // Gestionnaires d'événements pour les boutons de sauvegarde
+        document.getElementById('save-button').addEventListener('click', saveChanges);
+        document.getElementById('save-button-bottom').addEventListener('click', saveChanges);
+        
+        // Gestionnaire pour la génération de tous les extraits
+        document.getElementById('generate-all-btn').addEventListener('click', function() {
+            // Vérifier si une vidéo a été téléchargée
+            if (!videoPlayer.src || videoPlayer.src === '') {
+                showAlert('Veuillez d\'abord télécharger une vidéo', 'warning');
+                return;
+            }
+            
+            saveChanges();
+            showAlert('Préparation des extraits en cours...', 'info');
+            
+            setTimeout(function() {
+                window.location.href = '/generate_all_clips/{{ filename }}';
+            }, 1000);
+        });
+    });
+</script>
+{% endblock %} 
