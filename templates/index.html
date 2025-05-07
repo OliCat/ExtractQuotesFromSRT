@@ -5,6 +5,44 @@
 {% block content %}
 <div class="row">
     <div class="col-md-8 offset-md-2">
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0">Deux méthodes d'utilisation disponibles</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">1. Interface Web (Recommandé)</h5>
+                            </div>
+                            <div class="card-body">
+                                <p>Méthode complète avec prévisualisation vidéo et génération automatique des extraits :</p>
+                                <ul>
+                                    <li>Téléchargez votre fichier SRT</li>
+                                    <li>Éditez les extraits dans l'interface</li>
+                                    <li>Téléchargez votre vidéo pour prévisualiser</li>
+                                    <li>Générez tous les extraits en un clic</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header bg-secondary text-white">
+                                <h5 class="mb-0">2. Ligne de commande</h5>
+                            </div>
+                            <div class="card-body">
+                                <p>Pour utilisateurs avancés :</p>
+                                <pre class="bg-light p-2"><code>python extract_srt_quotes.py fichier.srt -f -n 10</code></pre>
+                                <p>Cette méthode génère uniquement un script FFmpeg que vous devrez exécuter manuellement.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <div class="card">
             <div class="card-header bg-primary text-white">
                 <h4 class="mb-0">Extraire des citations de votre podcast</h4>
@@ -106,9 +144,9 @@
                 <li>Téléchargez les sous-titres SRT depuis YouTube ou un autre service</li>
                 <li>Configurez les options d'extraction selon vos besoins</li>
                 <li>Cliquez sur "Extraire les citations" pour analyser le contenu</li>
-                <li>Consultez les résultats et téléchargez les fichiers générés</li>
-                <li>Utilisez le script FFmpeg pour découper automatiquement votre vidéo</li>
-                <li><strong>Nouveau :</strong> Éditez les citations pour améliorer leur qualité avant l'exportation finale</li>
+                <li>Consultez les résultats et éditez les citations si nécessaire</li>
+                <li>Téléchargez votre vidéo complète dans l'éditeur pour prévisualiser</li>
+                <li>Générez tous les extraits en un clic depuis l'interface web</li>
             </ol>
         </div>
     </div>

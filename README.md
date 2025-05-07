@@ -1,6 +1,6 @@
 # Extracteur de Citations pour Podcasts
 
-Application web permettant d'extraire automatiquement les moments forts d'un podcast à partir d'un fichier de sous-titres SRT. Elle identifie les passages importants, permet de les éditer, et génère des scripts pour découper la vidéo avec sous-titres incrustés.
+Application permettant d'extraire automatiquement les moments forts d'un podcast à partir d'un fichier de sous-titres SRT. Elle identifie les passages importants, permet de les éditer, et génère des scripts pour découper la vidéo avec sous-titres incrustés.
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.6+-green.svg)
@@ -57,7 +57,11 @@ SECRET_KEY=votre_cle_secrete
 
 ## 💻 Utilisation
 
-### Interface Web
+L'application peut être utilisée de deux façons différentes :
+
+### 1. Interface Web (Recommandé)
+
+L'interface web offre une expérience complète avec prévisualisation vidéo et édition des extraits.
 
 1. Démarrer l'application :
 ```bash
@@ -68,11 +72,15 @@ flask run
 
 3. Télécharger un fichier SRT et configurer les paramètres d'extraction
 
-4. Consulter les résultats et télécharger les fichiers générés
+4. Consulter les résultats et éditer les extraits dans l'interface
 
-### Ligne de commande
+5. Télécharger votre vidéo complète dans l'éditeur pour prévisualiser les extraits
 
-L'application peut également être utilisée en ligne de commande :
+6. Générer tous les extraits directement depuis l'interface web
+
+### 2. Ligne de commande (Pour utilisateurs avancés)
+
+Cette méthode génère uniquement les scripts FFmpeg que vous devrez exécuter manuellement.
 
 ```bash
 python extract_srt_quotes.py votre_fichier.srt [options]
@@ -92,16 +100,27 @@ Options disponibles :
 - `-m`, `--max-gap` : Écart maximal entre sous-titres pour le regroupement (par défaut: 3.0)
 - `--no-subtitles` : Ne pas incruster les sous-titres dans les segments vidéo
 
-## 📊 Workflow typique
+## 📊 Workflows typiques
+
+### Workflow avec l'interface web
 
 1. Télécharger les sous-titres SRT depuis YouTube ou autre service
 2. Importer le fichier SRT dans l'application web
 3. Configurer les options d'extraction selon vos besoins
 4. Analyser le contenu et visualiser les citations extraites
 5. Éditer manuellement les citations pour améliorer leur qualité
-6. Télécharger les fichiers générés (texte, JSON, SRT, script FFmpeg)
-7. Utiliser le script bash pour découper automatiquement la vidéo avec sous-titres incrustés
-8. Utiliser les segments vidéo pour créer des capsules pour les réseaux sociaux
+6. Télécharger votre vidéo complète dans l'éditeur
+7. Prévisualiser et ajuster les extraits avec le lecteur vidéo intégré
+8. Personnaliser les options de sous-titres (police, taille, couleur)
+9. Générer tous les extraits en un clic directement depuis l'interface
+
+### Workflow avec la ligne de commande
+
+1. Télécharger les sous-titres SRT depuis YouTube ou autre service
+2. Exécuter le script Python avec les options souhaitées
+3. Éditer manuellement le fichier de sortie si nécessaire
+4. Exécuter le script FFmpeg généré pour découper votre vidéo
+5. Utiliser les segments vidéo pour créer des capsules pour les réseaux sociaux
 
 ## 🔍 Comment ça marche
 

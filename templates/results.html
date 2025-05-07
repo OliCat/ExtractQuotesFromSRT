@@ -10,6 +10,7 @@
             <div>
                 {% if files.json %}
                 <a href="{{ url_for('edit_quotes', filename=filename) }}" class="btn btn-warning me-2">Éditer les citations</a>
+                <a href="{{ url_for('edit_video', filename=filename) }}" class="btn btn-primary me-2">Éditeur vidéo</a>
                 {% endif %}
                 <a href="{{ url_for('index') }}" class="btn btn-outline-primary">Nouvelle extraction</a>
             </div>
@@ -68,12 +69,45 @@
         <div class="card">
             <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Aperçu des citations extraites</h5>
-                {% if files.json %}
-                <a href="{{ url_for('edit_quotes', filename=filename) }}" class="btn btn-light btn-sm">Éditer ces citations</a>
-                {% endif %}
+                <div>
+                    {% if files.json %}
+                    <a href="{{ url_for('edit_quotes', filename=filename) }}" class="btn btn-light btn-sm me-2">Éditer ces citations</a>
+                    <a href="{{ url_for('edit_video', filename=filename) }}" class="btn btn-light btn-sm">Éditeur vidéo</a>
+                    {% endif %}
+                </div>
             </div>
             <div class="card-body">
                 <pre class="bg-light p-3" style="max-height: 500px; overflow-y: auto;">{{ quotes_content }}</pre>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if clips %}
+        <div class="card mt-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Extraits vidéo générés</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for clip in clips %}
+                    <div class="col-md-6 mb-4">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">{{ clip.name }}</h6>
+                            </div>
+                            <div class="card-body">
+                                <video class="w-100" controls>
+                                    <source src="{{ clip.url }}" type="video/mp4">
+                                    Votre navigateur ne prend pas en charge la lecture vidéo.
+                                </video>
+                                <div class="mt-2 d-flex justify-content-center">
+                                    <a href="{{ clip.url }}" download class="btn btn-sm btn-primary">Télécharger</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
         {% endif %}
@@ -134,6 +168,28 @@
                             </ul>
                             {% if files.json %}
                             <a href="{{ url_for('edit_quotes', filename=filename) }}" class="btn btn-warning mt-2">Éditer maintenant</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingFour">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+                            Éditeur vidéo avancé
+                        </button>
+                    </h2>
+                    <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour" data-bs-parent="#accordionUsage">
+                        <div class="accordion-body">
+                            <p>L'éditeur vidéo avancé vous permet de :</p>
+                            <ul>
+                                <li>Prévisualiser vos extraits directement dans le navigateur</li>
+                                <li>Ajuster précisément les points de début et de fin des extraits</li>
+                                <li>Personnaliser l'apparence des sous-titres (police, taille, couleur)</li>
+                                <li>Combiner plusieurs extraits en une seule vidéo</li>
+                                <li>Générer automatiquement tous les extraits en un clic</li>
+                            </ul>
+                            {% if files.json %}
+                            <a href="{{ url_for('edit_video', filename=filename) }}" class="btn btn-primary mt-2">Ouvrir l'éditeur vidéo</a>
                             {% endif %}
                         </div>
                     </div>
