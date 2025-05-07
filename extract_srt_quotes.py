@@ -27,6 +27,15 @@ def format_ffmpeg_time(time):
     milliseconds = int((total_seconds - int(total_seconds)) * 1000)
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}.{milliseconds:03d}"
 
+def format_timecode_srt(time):
+    """Convertit un objet timedelta en format SRT (HH:MM:SS,mmm)"""
+    total_seconds = time.total_seconds()
+    hours = int(total_seconds // 3600)
+    minutes = int((total_seconds % 3600) // 60)
+    seconds = int(total_seconds % 60)
+    milliseconds = int((total_seconds - int(total_seconds)) * 1000)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d},{milliseconds:03d}"
+
 def analyze_sentiment(text):
     """Analyse basique du sentiment d'un texte"""
     try:
@@ -283,6 +292,85 @@ def export_quotes_to_file(quotes, output_file):
         for i, quote in enumerate(quotes, 1):
             f.write(f"{i}. {quote['formatted_start']} - {quote['formatted_end']} : {quote['content'][:50]}...\n")
 
+def split_content_into_segments(content, max_chars=100):
+    """
+    Divise un texte en segments plus courts pour une meilleure synchronisation des sous-titres
+    """
+    # Si le contenu est vide ou trop court, le retourner tel quel
+    if not content or len(content) <= max_chars:
+        return [content]
+    
+    # Nettoyer le contenu: supprimer les caractères d'échappement et les caractères spéciaux problématiques
+    content = content.replace('\n', ' ').replace('\r', ' ')
+    content = content.replace('\\', '').replace('$', '\\$')
+    content = content.replace("\'", "'").replace('\"', '"')  # Normaliser les apostrophes et guillemets
+    content = content.strip()  # Supprimer les espaces en début et fin
+    
+    # Diviser le texte en phrases
+    sentences = re.split(r'(?<=[.!?])\s+', content)
+    
+    segments = []
+    current_segment = ""
+    
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+            
+        # Si la phrase est très courte, l'ajouter au segment courant
+        if len(sentence) < 20:
+            if current_segment and len(current_segment + " " + sentence) <= max_chars:
+                current_segment += " " + sentence
+            else:
+                if current_segment:
+                    segments.append(current_segment.strip())
+                current_segment = sentence
+            continue
+            
+        # Si la phrase est très longue, la découper en morceaux
+        if len(sentence) > max_chars:
+            # D'abord ajouter le segment courant s'il existe
+            if current_segment:
+                segments.append(current_segment.strip())
+                current_segment = ""
+                
+            # Puis découper la phrase longue en morceaux
+            words = sentence.split()
+            temp_segment = ""
+            
+            for word in words:
+                if len(temp_segment) + len(word) + 1 <= max_chars:
+                    if temp_segment:
+                        temp_segment += " " + word
+                    else:
+                        temp_segment = word
+                else:
+                    segments.append(temp_segment.strip())
+                    temp_segment = word
+            
+            # Ajouter le dernier morceau s'il existe
+            if temp_segment:
+                current_segment = temp_segment
+        else:
+            # Ajouter la phrase au segment actuel ou créer un nouveau segment
+            if current_segment and len(current_segment + " " + sentence) <= max_chars:
+                current_segment += " " + sentence
+            else:
+                if current_segment:
+                    segments.append(current_segment.strip())
+                current_segment = sentence
+    
+    # Ajouter le dernier segment s'il existe
+    if current_segment:
+        segments.append(current_segment.strip())
+    
+    # S'assurer qu'il y a au moins un segment et qu'aucun n'est vide
+    segments = [seg.strip() for seg in segments if seg.strip()]
+    if not segments:
+        segments = [content]
+    
+    return segments
+
 def generate_ffmpeg_cut_file(quotes, output_file, padding_seconds=1, add_subtitles=True):
     """Génère un fichier de découpage pour FFmpeg"""
     padding = timedelta(seconds=padding_seconds)
@@ -335,10 +423,39 @@ def generate_ffmpeg_cut_file(quotes, output_file, padding_seconds=1, add_subtitl
             # Ajouter les sous-titres si demandé et si le fichier SRT existe
             if add_subtitles:
                 f.write('if [ -n "$SRT_FILE" ]; then\n')
-                # Commande avec sous-titres incrustés
+                # Définir le nom du fichier SRT temporaire
+                f.write(f'  # Définir le nom du fichier SRT temporaire\n')
+                f.write(f'  temp_srt="temp_subtitle_{i}.srt"\n\n')
+                
+                # Extraire les sous-titres correspondant au segment
+                f.write(f'  # Extraire les sous-titres correspondant au segment\n')
+                f.write(f'  ffmpeg -i "$SRT_FILE" -ss {format_ffmpeg_time(start_time)} -t {format_ffmpeg_time(duration)} -f srt "$OUTPUT_DIR/$temp_srt"\n\n')
+                
+                # Débogage: vérifier que le fichier SRT a été créé
+                f.write('  # Débogage: vérifier que le fichier SRT a été créé\n')
+                f.write('  ls -la "$OUTPUT_DIR/$temp_srt"\n')
+                f.write('  cat "$OUTPUT_DIR/$temp_srt"\n\n')
+                
+                # S'assurer que le fichier est accessible
+                f.write('  # S\'assurer que le fichier SRT est accessible\n')
+                f.write('  chmod 644 "$OUTPUT_DIR/$temp_srt"\n\n')
+                
+                # Utiliser le filtre subtitles avec les options de style
                 f.write(f'  {ffmpeg_cmd} \\\n')
-                f.write(f'    -vf "subtitles=\'$SRT_FILE\':force_style=\'FontName=Arial,FontSize=24,PrimaryColour=&Hffffff,OutlineColour=&H000000,BackColour=&H80000000,Outline=1,Shadow=0\':enable=between(t\\,0\\,{duration_seconds})"\\\n')
-                f.write(f'    -c:v libx264 -c:a aac -strict experimental "{output_file}"\n')
+                f.write(f'    -vf "subtitles=$OUTPUT_DIR/$temp_srt:force_style=\'')
+                f.write(f'FontName=Arial,')
+                f.write(f'FontSize=36,')
+                f.write(f'PrimaryColour=&Hffffff,')
+                f.write(f'BackColour=&H000000B2,')  # 0.7 d'opacité (B2 en hexa)
+                f.write(f'BorderStyle=4,')  # Style avec fond (box)
+                f.write(f'Outline=1,')
+                f.write(f'Alignment=2,')    # Centré en bas
+                f.write(f'MarginV=30')      # Marge verticale pour remonter les sous-titres
+                f.write('\'" \\\n')
+                f.write(f'    -c:v libx264 -c:a aac -strict experimental "{output_file}"\n\n')
+                
+                # Supprimer le fichier SRT temporaire
+                f.write(f'  rm "$OUTPUT_DIR/$temp_srt"\n')
                 f.write('else\n')
                 # Commande sans sous-titres
                 f.write(f'  {ffmpeg_cmd} -c:v libx264 -c:a aac -strict experimental "{output_file}"\n')
@@ -346,6 +463,25 @@ def generate_ffmpeg_cut_file(quotes, output_file, padding_seconds=1, add_subtitl
             else:
                 # Commande sans sous-titres
                 f.write(f'{ffmpeg_cmd} -c:v libx264 -c:a aac -strict experimental "{output_file}"\n\n')
+    
+        # Ajouter une commande pour combiner tous les extraits
+        f.write("# Demander à l'utilisateur s'il souhaite combiner tous les extraits\n")
+        f.write("echo \"Voulez-vous combiner tous les extraits en une seule vidéo ? (o/n)\"\n")
+        f.write("read -r COMBINE\n")
+        f.write("if [ \"$COMBINE\" = \"o\" ] || [ \"$COMBINE\" = \"O\" ]; then\n")
+        f.write("    echo \"Combinaison de tous les extraits...\"\n")
+        f.write("    # Créer un fichier de liste pour FFmpeg\n")
+        f.write("    LIST_FILE=\"$OUTPUT_DIR/list.txt\"\n")
+        f.write("    > \"$LIST_FILE\"\n")
+        f.write("    for f in \"$OUTPUT_DIR\"/*.mp4; do\n")
+        f.write("        echo \"file '$f'\" >> \"$LIST_FILE\"\n")
+        f.write("    done\n")
+        f.write("    # Combiner les vidéos\n")
+        f.write("    ffmpeg -y -f concat -safe 0 -i \"$LIST_FILE\" -c copy \"$OUTPUT_DIR/tous_les_extraits_combines.mp4\"\n")
+        f.write("    echo \"Vidéo combinée créée : $OUTPUT_DIR/tous_les_extraits_combines.mp4\"\n")
+        f.write("    # Nettoyer le fichier de liste\n")
+        f.write("    rm -f \"$LIST_FILE\"\n")
+        f.write("fi\n")
     
     # Rendre le script exécutable
     import os
